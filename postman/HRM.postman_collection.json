@@ -1,0 +1,416 @@
+{
+  "info": {
+    "_postman_id": "9f03c0d7-993a-4c5d-9c30-2b1e7c4f1b2d",
+    "name": "HRM Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "employeeId", "value": "201224" },
+    { "key": "token", "value": "" },
+    { "key": "month", "value": "2026-05" },
+    { "key": "from", "value": "2026-04-26" },
+    { "key": "to", "value": "2026-05-25" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "Auth - Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+      }
+    },
+    {
+      "name": "Auth - Login (JWT mode only)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employee_id\": {{employeeId}},\n  \"password\": \"password\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "try {",
+              "  const json = pm.response.json();",
+              "  if (json && json.token) {",
+              "    pm.collectionVariables.set('token', json.token);",
+              "  }",
+              "} catch (e) {}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth - Password Reset Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employee_id\": {{employeeId}}\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/password-reset/request", "host": ["{{baseUrl}}"], "path": ["api", "auth", "password-reset", "request"] }
+      }
+    },
+    {
+      "name": "Auth - Password Reset Confirm",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"PASTE_TOKEN_HERE\",\n  \"new_password\": \"newpassword\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/password-reset/confirm", "host": ["{{baseUrl}}"], "path": ["api", "auth", "password-reset", "confirm"] }
+      }
+    },
+    {
+      "name": "Employees - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+      }
+    },
+    {
+      "name": "Employees - Get By Id",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "{{employeeId}}"]
+        }
+      }
+    },
+    {
+      "name": "Departments - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/departments", "host": ["{{baseUrl}}"], "path": ["api", "departments"] }
+      }
+    },
+    {
+      "name": "Departments - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"department_name\": \"New Department\",\n  \"description\": \"\",\n  \"manager_id\": null\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/departments", "host": ["{{baseUrl}}"], "path": ["api", "departments"] }
+      }
+    },
+    {
+      "name": "Shifts - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/shifts", "host": ["{{baseUrl}}"], "path": ["api", "shifts"] }
+      }
+    },
+    {
+      "name": "Shifts - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"shift_name\": \"Morning\",\n  \"start_time\": \"08:00:00\",\n  \"end_time\": \"16:00:00\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/shifts", "host": ["{{baseUrl}}"], "path": ["api", "shifts"] }
+      }
+    },
+    {
+      "name": "Attendance - List (Range)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance?from={{from}}&to={{to}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "attendance"],
+          "query": [
+            { "key": "from", "value": "{{from}}" },
+            { "key": "to", "value": "{{to}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Attendance - Specific Employee (Range)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/attendance?employeeId={{employeeId}}&from={{from}}&to={{to}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "attendance"],
+          "query": [
+            { "key": "employeeId", "value": "{{employeeId}}" },
+            { "key": "from", "value": "{{from}}" },
+            { "key": "to", "value": "{{to}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Dashboard - Attendance Preview (Month Cycle 26->25)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/attendance-preview?month={{month}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "dashboard", "attendance-preview"],
+          "query": [{ "key": "month", "value": "{{month}}" }]
+        }
+      }
+    },
+    {
+      "name": "Payroll - Preview (Self)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/payroll/preview?month={{month}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "payroll", "preview"],
+          "query": [{ "key": "month", "value": "{{month}}" }]
+        }
+      }
+    },
+    {
+      "name": "Bonus/Deductions - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employee_id\": {{employeeId}},\n  \"type\": \"bonus\",\n  \"value\": 100,\n  \"days\": 1,\n  \"from_date\": \"{{from}}\",\n  \"to_date\": \"{{to}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/bonus-deductions", "host": ["{{baseUrl}}"], "path": ["api", "bonus-deductions"] }
+      }
+    },
+    {
+      "name": "Bonus/Deductions - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/bonus-deductions?employeeId={{employeeId}}", "host": ["{{baseUrl}}"], "path": ["api", "bonus-deductions"], "query": [{ "key": "employeeId", "value": "{{employeeId}}" }] }
+      }
+    },
+    {
+      "name": "Vacation - Create Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vacation_type\": \"Annual\",\n  \"start_date\": \"{{from}}\",\n  \"end_date\": \"{{to}}\",\n  \"reason\": \"\",\n  \"deduction_type\": \"balance\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/vacation-requests", "host": ["{{baseUrl}}"], "path": ["api", "vacation-requests"] }
+      }
+    },
+    {
+      "name": "Vacation - My Requests",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/vacation-requests", "host": ["{{baseUrl}}"], "path": ["api", "vacation-requests"] }
+      }
+    },
+    {
+      "name": "Vacation - Inbox (Pending approvals)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/vacation-requests/inbox", "host": ["{{baseUrl}}"], "path": ["api", "vacation-requests", "inbox"] }
+      }
+    },
+    {
+      "name": "Vacation - Approve (set request_id manually)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/vacation-requests/1/approve", "host": ["{{baseUrl}}"], "path": ["api", "vacation-requests", "1", "approve"] }
+      }
+    },
+    {
+      "name": "Vacation - Reject (set request_id manually)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Rejected\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/vacation-requests/1/reject", "host": ["{{baseUrl}}"], "path": ["api", "vacation-requests", "1", "reject"] }
+      }
+    },
+    {
+      "name": "Permissions - Create Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"permission_date\": \"{{from}}\",\n  \"permission_type\": \"Permission\",\n  \"hours_requested\": 1,\n  \"reason\": \"\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/permissions", "host": ["{{baseUrl}}"], "path": ["api", "permissions"] }
+      }
+    },
+    {
+      "name": "Permissions - My Requests",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/permissions", "host": ["{{baseUrl}}"], "path": ["api", "permissions"] }
+      }
+    },
+    {
+      "name": "Permissions - Inbox (Pending approvals)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/permissions/inbox", "host": ["{{baseUrl}}"], "path": ["api", "permissions", "inbox"] }
+      }
+    },
+    {
+      "name": "Permissions - Approve (set permission_id manually)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/permissions/1/approve", "host": ["{{baseUrl}}"], "path": ["api", "permissions", "1", "approve"] }
+      }
+    },
+    {
+      "name": "Permissions - Reject (set permission_id manually)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/permissions/1/reject", "host": ["{{baseUrl}}"], "path": ["api", "permissions", "1", "reject"] }
+      }
+    },
+    {
+      "name": "Device Tokens - Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"token\": \"device-token\",\n  \"platform\": 1\n}" },
+        "url": { "raw": "{{baseUrl}}/api/device-tokens/register", "host": ["{{baseUrl}}"], "path": ["api", "device-tokens", "register"] }
+      }
+    },
+    {
+      "name": "Device Tokens - List",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-employee-id", "value": "{{employeeId}}" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/device-tokens", "host": ["{{baseUrl}}"], "path": ["api", "device-tokens"] }
+      }
+    }
+  ]
+}
