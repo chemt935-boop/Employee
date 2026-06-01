@@ -10,7 +10,13 @@ function isEmailConfigured() {
     config.email.from
   );
 }
-
+console.log('EMAIL CONFIG =>', {
+  host: config.email.host,
+  port: config.email.port,
+  secure: config.email.secure,
+  user: config.email.user,
+  passLength: config.email.pass?.length,
+});
 async function createTransport() {
 
   console.log('EMAIL CONFIG:', {
