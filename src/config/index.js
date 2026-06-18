@@ -18,11 +18,7 @@ module.exports = {
     returnTokenInResponse: env.EMAIL_RETURN_TOKEN_IN_RESPONSE
   },
   email: {
-    host: env.EMAIL_HOST || null,
-    port: env.EMAIL_PORT,
-    secure: env.EMAIL_SECURE,
-    user: env.EMAIL_USER || null,
-    pass: env.EMAIL_PASS || null,
+    apiKey: env.RESEND_API_KEY || null,
     from: env.EMAIL_FROM || null
   },
   firebase: {
@@ -44,4 +40,4 @@ module.exports = {
       idleTimeoutMillis: 30000
     }
   }
-};
+};``
