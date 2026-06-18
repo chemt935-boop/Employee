@@ -1,43 +1,38 @@
-require('dotenv').config();
+const nodemailer = require('nodemailer');
+const config = require('../config');
 
-const { loadEnv } = require('./env');
+function isEmailConfigured() {
+  return Boolean(config.email.host && config.email.user && config.email.pass && config.email.from);
+}
 
-const env = loadEnv(process.env);
-
-module.exports = {
-  env,
-  port: env.PORT,
-  authMode: env.AUTH_MODE,
-  jwt: {
-    secret: env.JWT_SECRET,
-    expiresIn: env.JWT_EXPIRES_IN
-  },
-  appBaseUrl: env.APP_BASE_URL,
-  passwordReset: {
-    ttlMinutes: env.PASSWORD_RESET_TOKEN_TTL_MINUTES,
-    returnTokenInResponse: env.EMAIL_RETURN_TOKEN_IN_RESPONSE
-  },
-  email: {
-    apiKey: env.RESEND_API_KEY || null,
-    from: env.EMAIL_FROM || null
-  },
-  firebase: {
-    serviceAccountJsonPath: env.FIREBASE_SERVICE_ACCOUNT_JSON || null
-  },
-  db: {
-    server: env.DB_HOST,
-    port: env.DB_PORT,
-    database: env.DB_NAME,
-    user: env.DB_USER,
-    password: env.DB_PASSWORD,
-    options: {
-      encrypt: env.DB_ENCRYPT,
-      trustServerCertificate: env.DB_TRUST_SERVER_CERT
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
+function createTransport() {
+  return nodemailer.createTransport({
+    host: config.email.host,
+    port: config.email.port,
+    secure: config.email.secure,
+    auth: {
+      user: config.email.user,
+      pass: config.email.pass
     }
+  });
+}
+
+async function sendMail({ to, subject, text, html }) {
+  if (!isEmailConfigured()) {
+    const err = new Error('Email is not configured');
+    err.statusCode = 501;
+    throw err;
   }
-};
+
+  const transport = createTransport();
+  await transport.sendMail({
+    from: config.email.from,
+    to,
+    subject,
+    text,
+    html
+  });
+}
+
+module.exports = { isEmailConfigured, sendMail };
+
