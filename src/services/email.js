@@ -1,78 +1,43 @@
-const nodemailer = require('nodemailer');
-const dns = require('dns').promises;
-const config = require('../config');
+require('dotenv').config();
 
-function isEmailConfigured() {
-  return Boolean(
-    config.email.host &&
-    config.email.user &&
-    config.email.pass &&
-    config.email.from
-  );
-}
-console.log('EMAIL CONFIG =>', {
-  host: config.email.host,
-  port: config.email.port,
-  secure: config.email.secure,
-  user: config.email.user,
-  passLength: config.email.pass?.length,
-});
-async function createTransport() {
+const { loadEnv } = require('./env');
 
-  console.log('EMAIL CONFIG:', {
-    host: config.email.host,
-    port: config.email.port,
-    secure: config.email.secure,
-    user: config.email.user,
-    passLength: config.email.pass?.length
-  });
+const env = loadEnv(process.env);
 
-  try {
-    const dnsResult = await dns.lookup(config.email.host);
-    console.log('DNS RESULT:', dnsResult);
-  } catch (e) {
-    console.error('DNS ERROR:', e);
-  }
-
-  const transport = nodemailer.createTransport({
-    host: config.email.host,
-    port: Number(config.email.port),
-    secure: config.email.secure === true || config.email.secure === 'true',
-    auth: {
-      user: config.email.user,
-      pass: config.email.pass
+module.exports = {
+  env,
+  port: env.PORT,
+  authMode: env.AUTH_MODE,
+  jwt: {
+    secret: env.JWT_SECRET,
+    expiresIn: env.JWT_EXPIRES_IN
+  },
+  appBaseUrl: env.APP_BASE_URL,
+  passwordReset: {
+    ttlMinutes: env.PASSWORD_RESET_TOKEN_TTL_MINUTES,
+    returnTokenInResponse: env.EMAIL_RETURN_TOKEN_IN_RESPONSE
+  },
+  email: {
+    apiKey: env.RESEND_API_KEY || null,
+    from: env.EMAIL_FROM || null
+  },
+  firebase: {
+    serviceAccountJsonPath: env.FIREBASE_SERVICE_ACCOUNT_JSON || null
+  },
+  db: {
+    server: env.DB_HOST,
+    port: env.DB_PORT,
+    database: env.DB_NAME,
+    user: env.DB_USER,
+    password: env.DB_PASSWORD,
+    options: {
+      encrypt: env.DB_ENCRYPT,
+      trustServerCertificate: env.DB_TRUST_SERVER_CERT
     },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000
-  });
-
-  try {
-    await transport.verify();
-    console.log('SMTP VERIFIED');
-  } catch (e) {
-    console.error('SMTP VERIFY ERROR:', e);
+    pool: {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30000
+    }
   }
-
-  return transport;
-}
-
-async function sendMail({ to, subject, text, html }) {
-  if (!isEmailConfigured()) {
-    const err = new Error('Email is not configured');
-    err.statusCode = 501;
-    throw err;
-  }
-
-  const transport = await createTransport();
-
-  await transport.sendMail({
-    from: config.email.from,
-    to,
-    subject,
-    text,
-    html
-  });
-}
-
-module.exports = { isEmailConfigured, sendMail };
+};
