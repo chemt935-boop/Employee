@@ -41,13 +41,9 @@ const schema = Joi.object({
 
   JWT_EXPIRES_IN: Joi.string().default('12h'),
 
-<<<<<<< HEAD
   APP_BASE_URL: Joi.string()
     .uri()
-    .default('http://localhost:3000'),
-=======
-  APP_BASE_URL: Joi.string().uri().default('https://employee-ao8s.onrender.com'),
->>>>>>> e3accbd0e9dbf96ea07efcd95cf2ce8dbed98d0a
+    .default('https://employee-ao8s.onrender.com'),
 
   PASSWORD_RESET_TOKEN_TTL_MINUTES: Joi.number()
     .integer()
