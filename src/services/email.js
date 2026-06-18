@@ -1,21 +1,14 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const config = require('../config');
 
 function isEmailConfigured() {
-  return Boolean(config.email.host && config.email.user && config.email.pass && config.email.from);
+  return Boolean(
+    config.email.apiKey &&
+    config.email.from
+  );
 }
 
-function createTransport() {
-  return nodemailer.createTransport({
-    host: config.email.host,
-    port: config.email.port,
-    secure: config.email.secure,
-    auth: {
-      user: config.email.user,
-      pass: config.email.pass
-    }
-  });
-}
+const resend = new Resend(config.email.apiKey);
 
 async function sendMail({ to, subject, text, html }) {
   if (!isEmailConfigured()) {
@@ -24,15 +17,25 @@ async function sendMail({ to, subject, text, html }) {
     throw err;
   }
 
-  const transport = createTransport();
-  await transport.sendMail({
+  const { data, error } = await resend.emails.send({
     from: config.email.from,
-    to,
+    to: Array.isArray(to) ? to : [to],
     subject,
     text,
     html
   });
+
+  if (error) {
+    console.error('RESEND ERROR:', error);
+    throw new Error(error.message);
+  }
+
+  console.log('EMAIL SENT:', data);
+
+  return data;
 }
 
-module.exports = { isEmailConfigured, sendMail };
-
+module.exports = {
+  isEmailConfigured,
+  sendMail
+};
