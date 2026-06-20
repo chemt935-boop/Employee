@@ -52,11 +52,13 @@ function auth() {
         }
         const token = header.slice('bearer '.length).trim();
         let payload;
-        try {
-          payload = jwt.verify(token, config.jwt.secret);
-        } catch {
-          throw httpError(401, 'Invalid token');
-        }
+      try {
+  payload = jwt.verify(token, config.jwt.secret);
+  console.log("Payload:", payload);
+} catch (e) {
+  console.log("JWT Error:", e.message);
+  throw httpError(401, e.message);
+}
         employeeId = Number(payload.sub || payload.employeeId);
         if (!Number.isInteger(employeeId)) throw httpError(401, 'Invalid token subject');
       }

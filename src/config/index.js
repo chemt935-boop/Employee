@@ -40,4 +40,4 @@ module.exports = {
       idleTimeoutMillis: 30000
     }
   }
-};``
+}

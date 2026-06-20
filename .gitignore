@@ -2,3 +2,6 @@ node_modules
 .env
 npm-debug.log*
 *.log
+
+ServiceAccountKey.json
+service-account*.json
