@@ -105,15 +105,11 @@ router.get('/inbox', async (req, res) => {
         vr.notes
       FROM dbo.VacationRequests vr
       INNER JOIN dbo.Employees e ON e.employee_id = vr.employee_id
-      WHERE vr.status = 'Pending'
-        AND (
-          (e.direct_manager_id = @me AND vr.direct_manager_approval = 0)
-          OR (
-            (e.factory_manager_id = @me OR @isFactoryManager = 1)
-            AND vr.direct_manager_approval = 1
-            AND vr.factory_manager_approval = 0
-          )
-        )
+      WHERE (
+        e.direct_manager_id = @me
+        OR e.factory_manager_id = @me
+        OR @isFactoryManager = 1
+      )
       ORDER BY vr.request_id DESC
     `,
     { me: req.user.employee_id, isFactoryManager: req.user.role === 'FactoryManager' ? 1 : 0 }
