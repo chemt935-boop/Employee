@@ -103,7 +103,6 @@ router.get('/inbox', async (req, res) => {
         vr.factory_manager_approval,
         vr.request_date,
         vr.notes,
-        vr.reason
       FROM dbo.VacationRequests vr
       INNER JOIN dbo.Employees e ON e.employee_id = vr.employee_id
       WHERE vr.status = 'Pending'
