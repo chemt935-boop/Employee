@@ -32,7 +32,7 @@ function createApp() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Forgot Password</title>
+  <title>Chem Tech HRM | Forgot Password</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -223,6 +223,38 @@ function createApp() {
       transition: color .15s;
     }
     .back-link:hover { color: var(--text); }
+
+    /* Snackbar */
+    .snackbar {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(20px);
+      min-width: 260px;
+      max-width: 90vw;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 1000;
+    }
+    .snackbar.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    .snackbar svg { width:16px; height:16px; flex-shrink:0; fill:none; stroke-width:2; stroke-linecap:round; }
+    .snackbar.success { background: #0d4a2a; border: 1px solid #14633a; color: #6ee7b7; }
+    .snackbar.success svg { stroke: #6ee7b7; }
+    .snackbar.error   { background: #5a1520; border: 1px solid #76202d; color: #fca5a5; }
+    .snackbar.error svg { stroke: #fca5a5; }
   </style>
 </head>
 <body>
@@ -231,7 +263,7 @@ function createApp() {
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </div>
-      <span class="logo-name">Employee Portal</span>
+      <span class="logo-name">Chem Tech HRM</span>
     </div>
 
     <div class="card">
@@ -263,7 +295,93 @@ function createApp() {
     </div>
 
   </div>
+
+  <div id="snackbar" class="snackbar">
+    <svg id="snackbar-icon" viewBox="0 0 24 24"></svg>
+    <span id="snackbar-text"></span>
+  </div>
+
   <script src="/public/forgot-password.js"></script>
+  <script>
+    (function () {
+      const form        = document.getElementById('form');
+      const btn          = document.getElementById('btn');
+      const btnLabel      = document.getElementById('btn-label');
+      const spinner       = document.getElementById('spinner');
+      const btnIcon         = document.getElementById('btn-icon');
+      const statusBox     = document.getElementById('status');
+      const identityInput = document.getElementById('identity');
+
+      const snackbar     = document.getElementById('snackbar');
+      const snackbarIcon = document.getElementById('snackbar-icon');
+      const snackbarText = document.getElementById('snackbar-text');
+
+      const ICON_SUCCESS = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+      const ICON_ERROR   = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+
+      let snackbarTimer = null;
+      function showSnackbar(type, message) {
+        clearTimeout(snackbarTimer);
+        snackbar.className = 'snackbar show ' + type;
+        snackbarIcon.innerHTML = type === 'success' ? ICON_SUCCESS : ICON_ERROR;
+        snackbarText.textContent = message;
+        snackbarTimer = setTimeout(() => {
+          snackbar.className = 'snackbar';
+        }, 4000);
+      }
+
+      function setLoading(isLoading) {
+        btn.disabled = isLoading;
+        spinner.style.display = isLoading ? 'block' : 'none';
+        btnIcon.style.display = isLoading ? 'none' : 'block';
+        btnLabel.textContent = isLoading ? 'Sending…' : 'Send reset link';
+      }
+
+      function showStatus(type, message) {
+        statusBox.className = 'status ' + type;
+        statusBox.textContent = message;
+        statusBox.style.display = 'block';
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const identity = identityInput.value.trim();
+
+        if (!identity) {
+          showStatus('error', 'Please enter your employee ID or email.');
+          showSnackbar('error', 'Failed: identity is required');
+          return;
+        }
+
+        setLoading(true);
+        statusBox.style.display = 'none';
+
+        try {
+          const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.authorized !== false) {
+            showStatus('success', 'If an account exists for that ID or email, a reset link is on its way.');
+            showSnackbar('success', 'Success: reset link sent');
+            form.reset();
+          } else {
+            showStatus('error', data.message || 'We could not process that request.');
+            showSnackbar('error', data.message || 'Failed: request could not be authorized');
+          }
+        } catch (err) {
+          showStatus('error', 'Network error. Please try again.');
+          showSnackbar('error', 'Failed: network error');
+        } finally {
+          setLoading(false);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
     `);
@@ -276,7 +394,7 @@ function createApp() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reset Password</title>
+  <title>Chem Tech HRM | Reset Password</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -487,6 +605,38 @@ function createApp() {
       transition: color .15s;
     }
     .back-link:hover { color: var(--text); }
+
+    /* Snackbar */
+    .snackbar {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(20px);
+      min-width: 260px;
+      max-width: 90vw;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 1000;
+    }
+    .snackbar.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    .snackbar svg { width:16px; height:16px; flex-shrink:0; fill:none; stroke-width:2; stroke-linecap:round; }
+    .snackbar.success { background: #0d4a2a; border: 1px solid #14633a; color: #6ee7b7; }
+    .snackbar.success svg { stroke: #6ee7b7; }
+    .snackbar.error   { background: #5a1520; border: 1px solid #76202d; color: #fca5a5; }
+    .snackbar.error svg { stroke: #fca5a5; }
   </style>
 </head>
 <body>
@@ -495,7 +645,7 @@ function createApp() {
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </div>
-      <span class="logo-name">Employee Portal</span>
+      <span class="logo-name">Chem Tech HRM</span>
     </div>
 
     <div class="card">
@@ -554,6 +704,11 @@ function createApp() {
     </div>
   </div>
 
+  <div id="snackbar" class="snackbar">
+    <svg id="snackbar-icon" viewBox="0 0 24 24"></svg>
+    <span id="snackbar-text"></span>
+  </div>
+
   <script>
     // Password strength meter
     const pwInput = document.getElementById('password');
@@ -594,6 +749,105 @@ function createApp() {
     }
     makeToggle('toggle1', 'password');
     makeToggle('toggle2', 'password2');
+
+    // Snackbar helper
+    const snackbar     = document.getElementById('snackbar');
+    const snackbarIcon = document.getElementById('snackbar-icon');
+    const snackbarText = document.getElementById('snackbar-text');
+    const ICON_SUCCESS  = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+    const ICON_ERROR    = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+
+    let snackbarTimer = null;
+    function showSnackbar(type, message) {
+      clearTimeout(snackbarTimer);
+      snackbar.className = 'snackbar show ' + type;
+      snackbarIcon.innerHTML = type === 'success' ? ICON_SUCCESS : ICON_ERROR;
+      snackbarText.textContent = message;
+      snackbarTimer = setTimeout(() => {
+        snackbar.className = 'snackbar';
+      }, 4000);
+    }
+
+    // Grab reset token from the URL, e.g. /reset-password?token=abc123
+    const params = new URLSearchParams(window.location.search);
+    const tokenField = document.getElementById('token');
+    tokenField.value = params.get('token') || '';
+
+    // Submit handling
+    const form        = document.getElementById('form');
+    const submitBtn    = document.getElementById('btn');
+    const btnLabel      = document.getElementById('btn-label');
+    const spinner        = document.getElementById('spinner');
+    const btnIcon          = document.getElementById('btn-icon');
+    const statusBox      = document.getElementById('status');
+    const password2Input = document.getElementById('password2');
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      spinner.style.display = isLoading ? 'block' : 'none';
+      btnIcon.style.display = isLoading ? 'none' : 'block';
+      btnLabel.textContent = isLoading ? 'Updating…' : 'Update password';
+    }
+
+    function showStatus(type, message) {
+      statusBox.className = 'status ' + type;
+      statusBox.textContent = message;
+      statusBox.style.display = 'block';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const password  = pwInput.value;
+      const password2 = password2Input.value;
+      const token     = tokenField.value;
+
+      if (!token) {
+        showStatus('error', 'Reset link is missing or invalid. Please request a new one.');
+        showSnackbar('error', 'Failed: invalid or missing reset token');
+        return;
+      }
+      if (password.length < 8) {
+        showStatus('error', 'Password must be at least 8 characters long.');
+        showSnackbar('error', 'Failed: password too short');
+        return;
+      }
+      if (password !== password2) {
+        showStatus('error', 'Passwords do not match.');
+        showSnackbar('error', 'Failed: passwords do not match');
+        return;
+      }
+
+      setLoading(true);
+      statusBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.authorized !== false) {
+          showStatus('success', 'Your password has been updated successfully.');
+          showSnackbar('success', 'Success: password updated');
+          form.reset();
+          segs.forEach(seg => { seg.className = 'strength-seg'; });
+          strengthLabel.textContent = 'Enter a password';
+        } else {
+          const msg = data.message || 'This reset link is invalid, expired, or unauthorized.';
+          showStatus('error', msg);
+          showSnackbar('error', 'Failed: ' + msg);
+        }
+      } catch (err) {
+        showStatus('error', 'Network error. Please try again.');
+        showSnackbar('error', 'Failed: network error');
+      } finally {
+        setLoading(false);
+      }
+    });
   </script>
   <script src="/public/reset-password.js"></script>
 </body>
