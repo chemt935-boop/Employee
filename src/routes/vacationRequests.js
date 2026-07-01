@@ -165,16 +165,45 @@ router.post('/', async (req, res) => {
     }
   );
 
-  const created = await getRequestWithEmployee(insert.recordset[0].request_id);
-  if (created?.direct_manager_id) {
-    await notifyEmployee(created.direct_manager_id, {
-      title: 'Vacation request',
-      body: `${created.employee_name} submitted a vacation request`,
-      data: { type: 'vacation_request.created', request_id: created.request_id, employee_id: created.employee_id }
-    });
-  }
+const created = await getRequestWithEmployee(insert.recordset[0].request_id);
 
-  res.status(201).json({ request_id: insert.recordset[0].request_id });
+const sameManager =
+  created?.direct_manager_id != null &&
+  created.direct_manager_id === created.factory_manager_id;
+
+if (sameManager) {
+  // نفس الشخص هو المدير المباشر والفاكتوري -> نتخطى خطوة الـ DM تلقائيًا
+  await query(
+    `
+      UPDATE dbo.VacationRequests
+      SET direct_manager_approval = 1, direct_manager_approved = 1
+      WHERE request_id = @requestId
+    `,
+    { requestId: created.request_id }
+  );
+
+  await notifyEmployee(created.factory_manager_id, {
+    title: 'Vacation request needs approval',
+    body: `${created.employee_name} vacation request is waiting for your approval`,
+    data: {
+      type: 'vacation_request.needs_fm_approval',
+      request_id: created.request_id,
+      employee_id: created.employee_id
+    }
+  });
+} else if (created?.direct_manager_id) {
+  await notifyEmployee(created.direct_manager_id, {
+    title: 'Vacation request',
+    body: `${created.employee_name} submitted a vacation request`,
+    data: {
+      type: 'vacation_request.created',
+      request_id: created.request_id,
+      employee_id: created.employee_id
+    }
+  });
+}
+
+res.status(201).json({ request_id: insert.recordset[0].request_id });
 });
 
 router.post('/:id/approve', async (req, res) => {
