@@ -77,6 +77,8 @@ router.get('/', async (req, res) => {
         p.permission_id,
         p.employee_id,
         e.name AS employee_name,
+        e.direct_manager_id,
+        e.factory_manager_id,
         p.permission_date,
         p.permission_type,
         CONVERT(varchar(8), p.start_time, 108) AS start_time,
@@ -114,6 +116,8 @@ router.get('/inbox', async (req, res) => {
         p.permission_id,
         p.employee_id,
         e.name AS employee_name,
+        e.direct_manager_id,
+        e.factory_manager_id,
         p.permission_date,
         p.permission_type,
         p.hours_requested,
@@ -136,6 +140,53 @@ router.get('/inbox', async (req, res) => {
       ORDER BY p.permission_id DESC
     `,
     { me: req.user.employee_id, isFactoryManager: req.user.role === 'FactoryManager' ? 1 : 0 }
+  );
+
+  res.json({ data: result.recordset.map(mapPermissionRow) });
+});
+
+router.get('/managed', async (req, res) => {
+  const schema = Joi.object({
+    status: Joi.string().valid('Pending', 'Approved', 'Rejected').allow('', null).optional()
+  });
+
+  const { value, error } = schema.validate(req.query, { abortEarly: false, convert: true });
+  if (error) throw httpError(400, error.details.map((d) => d.message).join('; '));
+
+  const result = await query(
+    `
+      SELECT
+        p.permission_id,
+        p.employee_id,
+        e.name AS employee_name,
+        e.direct_manager_id,
+        e.factory_manager_id,
+        p.permission_date,
+        p.permission_type,
+        CONVERT(varchar(8), p.start_time, 108) AS start_time,
+        CONVERT(varchar(8), p.end_time, 108) AS end_time,
+        p.hours_requested,
+        p.reason,
+        p.status,
+        p.direct_manager_approved,
+        p.factory_manager_approved,
+        p.created_date,
+        p.additional_info
+      FROM dbo.Permissions p
+      INNER JOIN dbo.Employees e ON e.employee_id = p.employee_id
+      WHERE (@status IS NULL OR p.status = @status)
+        AND (
+          e.direct_manager_id = @me
+          OR e.factory_manager_id = @me
+          OR @isFactoryManager = 1
+        )
+      ORDER BY p.permission_id DESC
+    `,
+    {
+      me: req.user.employee_id,
+      isFactoryManager: req.user.role === 'FactoryManager' ? 1 : 0,
+      status: value.status || null
+    }
   );
 
   res.json({ data: result.recordset.map(mapPermissionRow) });
@@ -184,7 +235,14 @@ router.post('/', async (req, res) => {
   );
 
   const created = await getPermissionWithEmployee(insert.recordset[0].permission_id);
-  if (created?.direct_manager_id) {
+
+  if (created?.direct_manager_id === created?.factory_manager_id && created?.direct_manager_id) {
+    await notifyEmployee(created.direct_manager_id, {
+      title: 'Permission request',
+      body: `${created.employee_name} submitted a permission request`,
+      data: { type: 'permission_request.created', permission_id: created.permission_id, employee_id: created.employee_id }
+    });
+  } else if (created?.direct_manager_id) {
     await notifyEmployee(created.direct_manager_id, {
       title: 'Permission request',
       body: `${created.employee_name} submitted a permission request`,
@@ -205,12 +263,39 @@ router.post('/:id/approve', async (req, res) => {
   if (permission.status !== 'Pending') throw httpError(400, 'Permission is not pending');
 
   const isDirectManager = permission.direct_manager_id === req.user.employee_id;
-  const isFactoryManager = req.user.role === 'FactoryManager' || permission.factory_manager_id === req.user.employee_id;
+  const isAssignedFactoryManager = permission.factory_manager_id === req.user.employee_id;
+  const isGlobalFactoryManager = req.user.role === 'FactoryManager';
+  const isFactoryManager = isAssignedFactoryManager || isGlobalFactoryManager;
 
-  const didDmApprove = isDirectManager && !permission.direct_manager_approved;
-  const didFmApprove = isFactoryManager && !!permission.direct_manager_approved && !permission.factory_manager_approved;
+  const dmEqualsFm = !!permission.direct_manager_id && permission.direct_manager_id === permission.factory_manager_id;
 
-  if (isDirectManager && !permission.direct_manager_approved) {
+  const dmPending = !permission.direct_manager_approved;
+  const fmPending = !permission.factory_manager_approved;
+
+  if (dmEqualsFm && isDirectManager && dmPending) {
+    await query(
+      `
+        UPDATE dbo.Permissions
+        SET direct_manager_approved = 1,
+            factory_manager_approved = 1,
+            status = 'Approved'
+        WHERE permission_id = @permissionId
+      `,
+      { permissionId: permission.permission_id }
+    );
+
+    const final = await getPermissionWithEmployee(parsed.value.id);
+    if (final?.employee_id) {
+      await notifyEmployee(final.employee_id, {
+        title: 'Permission request approved',
+        body: 'Your permission request was approved',
+        data: { type: 'permission_request.approved', permission_id: final.permission_id }
+      });
+    }
+    return res.json({ data: final });
+  }
+
+  if (isDirectManager && dmPending) {
     await query(
       `
         UPDATE dbo.Permissions
@@ -219,7 +304,19 @@ router.post('/:id/approve', async (req, res) => {
       `,
       { permissionId: permission.permission_id }
     );
-  } else if (isFactoryManager && !!permission.direct_manager_approved && !permission.factory_manager_approved) {
+
+    const final = await getPermissionWithEmployee(parsed.value.id);
+    if (final?.factory_manager_id && final.status === 'Pending') {
+      await notifyEmployee(final.factory_manager_id, {
+        title: 'Permission request needs approval',
+        body: `${final.employee_name} permission request is waiting for your approval`,
+        data: { type: 'permission_request.needs_fm_approval', permission_id: final.permission_id, employee_id: final.employee_id }
+      });
+    }
+    return res.json({ data: final });
+  }
+
+  if (isFactoryManager && !!permission.direct_manager_approved && fmPending) {
     await query(
       `
         UPDATE dbo.Permissions
@@ -228,41 +325,27 @@ router.post('/:id/approve', async (req, res) => {
       `,
       { permissionId: permission.permission_id }
     );
-  } else {
-    throw httpError(403, 'Forbidden');
+
+    const afterFm = await getPermissionWithEmployee(parsed.value.id);
+    if (!!afterFm.direct_manager_approved && !!afterFm.factory_manager_approved) {
+      await query(
+        `UPDATE dbo.Permissions SET status = 'Approved' WHERE permission_id = @permissionId`,
+        { permissionId: afterFm.permission_id }
+      );
+    }
+
+    const final = await getPermissionWithEmployee(parsed.value.id);
+    if (final?.employee_id && final.status === 'Approved') {
+      await notifyEmployee(final.employee_id, {
+        title: 'Permission request approved',
+        body: 'Your permission request was approved',
+        data: { type: 'permission_request.approved', permission_id: final.permission_id }
+      });
+    }
+    return res.json({ data: final });
   }
 
-  const updated = await getPermissionWithEmployee(parsed.value.id);
-  if (!!updated.direct_manager_approved && !!updated.factory_manager_approved) {
-    await query(
-      `
-        UPDATE dbo.Permissions
-        SET status = 'Approved'
-        WHERE permission_id = @permissionId
-      `,
-      { permissionId: updated.permission_id }
-    );
-  }
-
-  const final = await getPermissionWithEmployee(parsed.value.id);
-
-  if (didDmApprove && final?.factory_manager_id && final.status === 'Pending' && !!final.direct_manager_approved && !final.factory_manager_approved) {
-    await notifyEmployee(final.factory_manager_id, {
-      title: 'Permission request needs approval',
-      body: `${final.employee_name} permission request is waiting for your approval`,
-      data: { type: 'permission_request.needs_fm_approval', permission_id: final.permission_id, employee_id: final.employee_id }
-    });
-  }
-
-  if (didFmApprove && final?.employee_id && final.status === 'Approved') {
-    await notifyEmployee(final.employee_id, {
-      title: 'Permission request approved',
-      body: 'Your permission request was approved',
-      data: { type: 'permission_request.approved', permission_id: final.permission_id }
-    });
-  }
-
-  res.json({ data: final });
+  throw httpError(403, 'Forbidden');
 });
 
 router.post('/:id/reject', async (req, res) => {
@@ -275,11 +358,16 @@ router.post('/:id/reject', async (req, res) => {
   if (permission.status !== 'Pending') throw httpError(400, 'Permission is not pending');
 
   const isDirectManager = permission.direct_manager_id === req.user.employee_id;
-  const isFactoryManager = req.user.role === 'FactoryManager' || permission.factory_manager_id === req.user.employee_id;
+  const isAssignedFactoryManager = permission.factory_manager_id === req.user.employee_id;
+  const isGlobalFactoryManager = req.user.role === 'FactoryManager';
+  const isFactoryManager = isAssignedFactoryManager || isGlobalFactoryManager;
+
+  const dmPending = !permission.direct_manager_approved;
+  const fmPending = !permission.factory_manager_approved;
 
   const canReject =
-    (isDirectManager && !permission.direct_manager_approved) ||
-    (isFactoryManager && !!permission.direct_manager_approved && !permission.factory_manager_approved);
+    (isDirectManager && dmPending) ||
+    (isFactoryManager && !!permission.direct_manager_approved && fmPending);
 
   if (!canReject) throw httpError(403, 'Forbidden');
 
