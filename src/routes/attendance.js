@@ -20,13 +20,23 @@ router.get('/', async (req, res) => {
     employeeId: Joi.number().integer().optional()
   });
 
-  const { value, error } = schema.validate(req.query, { abortEarly: false, convert: true });
-  if (error) throw httpError(400, error.details.map((d) => d.message).join('; '));
+  const { value, error } = schema.validate(req.query, {
+    abortEarly: false,
+    convert: true
+  });
+
+  if (error)
+    throw httpError(
+      400,
+      error.details.map((d) => d.message).join('; ')
+    );
 
   const defaults = defaultFromTo();
   const fromDate = parseYmd(value.from) || defaults.from;
   const toDate = parseYmd(value.to) || defaults.to;
-  if (fromDate > toDate) throw httpError(400, 'from must be <= to');
+
+  if (fromDate > toDate)
+    throw httpError(400, 'from must be <= to');
 
   const result = await query(
     `
@@ -36,27 +46,46 @@ router.get('/', async (req, res) => {
         e.name AS employee_name,
         e.department_id,
         d.department_name,
+
         a.[date],
+
         CONVERT(varchar(8), a.check_in, 108) AS check_in,
         CONVERT(varchar(8), a.check_out, 108) AS check_out,
+
+        a.check_in_date,
+        a.check_out_date,
+
         a.status,
         a.remarks,
         a.vacation_request_id,
         a.permission_id,
+
         CASE
-  WHEN a.check_in IS NOT NULL
-       AND s.start_time IS NOT NULL
-       AND a.check_in > DATEADD(MINUTE, 15, s.start_time)
-  THEN DATEDIFF(MINUTE, s.start_time, a.check_in)
-  ELSE 0
-END AS late_minutes
+          WHEN a.check_in IS NOT NULL
+               AND s.start_time IS NOT NULL
+               AND a.check_in > DATEADD(MINUTE, 15, s.start_time)
+          THEN DATEDIFF(MINUTE, s.start_time, a.check_in)
+          ELSE 0
+        END AS late_minutes
+
       FROM dbo.Attendance a
-      INNER JOIN dbo.Employees e ON e.employee_id = a.employee_id
-      LEFT JOIN dbo.Departments d ON d.department_id = e.department_id
-      LEFT JOIN dbo.Shifts s ON s.shift_id = e.shift_id
-      WHERE a.[date] >= @fromDate AND a.[date] <= @toDate
-        AND (@employeeId IS NULL OR a.employee_id = @employeeId)
-      ORDER BY a.[date] DESC, a.attendance_id DESC
+      INNER JOIN dbo.Employees e
+          ON e.employee_id = a.employee_id
+
+      LEFT JOIN dbo.Departments d
+          ON d.department_id = e.department_id
+
+      LEFT JOIN dbo.Shifts s
+          ON s.shift_id = e.shift_id
+
+      WHERE
+          a.[date] >= @fromDate
+          AND a.[date] <= @toDate
+          AND (@employeeId IS NULL OR a.employee_id = @employeeId)
+
+      ORDER BY
+          a.[date] DESC,
+          a.attendance_id DESC
     `,
     {
       fromDate: toYmd(fromDate),
@@ -66,7 +95,10 @@ END AS late_minutes
   );
 
   res.json({
-    range: { from: toYmd(fromDate), to: toYmd(toDate) },
+    range: {
+      from: toYmd(fromDate),
+      to: toYmd(toDate)
+    },
     data: result.recordset
   });
 });
